@@ -204,74 +204,23 @@ sinim_obtener_datos <- function(
   
   row_count <- nrow(base_grid)
   
-  if (show_progress) {
-    with_progress({
-      p <- progressor(steps = row_count)
-      
-      base_grid <- base_grid %>%
-        mutate(
-          data_values = future_pmap(
-            list(var_code, sinim_year_code, municipio, municipio_name, idLegal),
-            function(.var, .yearcode, .muni, .muni_name, .id_legal) {
-              # Get the user-friendly year from the sinim_year_code
-              user_year <- years[ match(.yearcode, sinim_años(years)) ]
-              
-              # Signal progress update exactly once per iteration
-              p(sprintf("Fetching var=%s, year=%s, muni=%s", .var, user_year, .muni))
-              
-              # Custom debug message for timing
-              start_time <- Sys.time()
-              df <- tryCatch({
-                .fetch_values_single(
-                  variable         = .var,
-                  sinim_year_code  = .yearcode,
-                  municipio_id     = .muni,
-                  municipio_name   = .muni_name,
-                  idLegal          = .id_legal,
-                  corrmon          = corrmon
-                )
-              }, error = function(e) {
-                warning(paste("Error fetching var=", .var, " year=", user_year, " muni=", .muni))
-                NULL
-              })
-              end_time <- Sys.time()
-              elapsed_time <- end_time - start_time
-              
-              # Print custom debug message
-              message(sprintf("%.3fs => Fetching var=%s, year=%s, muni=%s", elapsed_time, .var, user_year, .muni))
-              
-              if (!is.null(df)) {
-                df %>%
-                  mutate(
-                    code_var        = .var,
-                    code_year       = .yearcode,
-                    code_municipio  = .muni
-                  )
-              } else {
-                tibble(
-                  valor           = NA_character_,
-                  col             = NA_character_,
-                  classtype       = NA_character_,
-                  municipio       = NA_character_,
-                  code_var        = .var,
-                  code_year       = .yearcode,
-                  code_municipio  = .muni
-                )
-              }
-            }
-          )
-        )
-      
-      # Explicitly disable the progressor after all steps are completed
-      p(amount = 0, type = "finish")
-    })
-  } else {
-    # Run without progress bar
+  # if (show_progress) {
+  with_progress({
+    p <- progressor(steps = row_count)
+    
     base_grid <- base_grid %>%
       mutate(
         data_values = future_pmap(
           list(var_code, sinim_year_code, municipio, municipio_name, idLegal),
           function(.var, .yearcode, .muni, .muni_name, .id_legal) {
+            # Get the user-friendly year from the sinim_year_code
+            user_year <- years[ match(.yearcode, sinim_años(years)) ]
+            
+            # Signal progress update exactly once per iteration
+            p(sprintf("Fetching var=%s, year=%s, muni=%s", .var, user_year, .muni))
+            
+            # Custom debug message for timing
+            start_time <- Sys.time()
             df <- tryCatch({
               .fetch_values_single(
                 variable         = .var,
@@ -282,9 +231,16 @@ sinim_obtener_datos <- function(
                 corrmon          = corrmon
               )
             }, error = function(e) {
-              warning(paste("Error fetching var=", .var, " year=", .yearcode, " muni=", .muni))
+              warning(paste("Error fetching var=", .var, " year=", user_year, " muni=", .muni))
               NULL
             })
+            end_time <- Sys.time()
+            elapsed_time <- end_time - start_time
+            
+            # Print custom debug message
+            message(sprintf("%.3fs => Fetching var=%s, year=%s, muni=%s", elapsed_time, .var, user_year, .muni))
+            # esperar
+            Sys.sleep(elapsed_time * 3)
             
             if (!is.null(df)) {
               df %>%
@@ -307,7 +263,56 @@ sinim_obtener_datos <- function(
           }
         )
       )
-  }
+    
+    # Explicitly disable the progressor after all steps are completed
+    p(amount = 0, type = "finish")
+  })
+  # } else {
+  #   # Run without progress bar
+  #   base_grid <- base_grid %>%
+  #     mutate(
+  #       data_values = future_pmap(
+  #         list(var_code, sinim_year_code, municipio, municipio_name, idLegal),
+  #         function(.var, .yearcode, .muni, .muni_name, .id_legal) {
+  #           df <- tryCatch({
+  #             .fetch_values_single(
+  #               variable         = .var,
+  #               sinim_year_code  = .yearcode,
+  #               municipio_id     = .muni,
+  #               municipio_name   = .muni_name,
+  #               idLegal          = .id_legal,
+  #               corrmon          = corrmon
+  #             )
+  #           }, error = function(e) {
+  #             warning(paste("Error fetching var=", .var, " year=", .yearcode, " muni=", .muni))
+  #             NULL
+  #           })
+  #           
+  #           # esperar
+  #           Sys.sleep(0.2 * 3)
+  #           
+  #           if (!is.null(df)) {
+  #             df %>%
+  #               mutate(
+  #                 code_var        = .var,
+  #                 code_year       = .yearcode,
+  #                 code_municipio  = .muni
+  #               )
+  #           } else {
+  #             tibble(
+  #               valor           = NA_character_,
+  #               col             = NA_character_,
+  #               classtype       = NA_character_,
+  #               municipio       = NA_character_,
+  #               code_var        = .var,
+  #               code_year       = .yearcode,
+  #               code_municipio  = .muni
+  #             )
+  #           }
+  #         }
+  #       )
+  #     )
+  # }
   
   final_df <- base_grid %>%
     unnest(data_values, names_sep = "_") %>%
