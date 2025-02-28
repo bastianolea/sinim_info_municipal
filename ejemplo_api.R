@@ -23,3 +23,7 @@ datos_educacion <- sinim_obtener_datos(
 
 datos_educacion |> 
   distinct(variable, area, subarea)
+
+datos_educacion |> 
+  filter(user_year > 2010) |> 
+  select(variable, user_year, value)

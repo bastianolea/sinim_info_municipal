@@ -42,4 +42,6 @@ datos_sinim_4 <- datos_sinim_3 |>
          valor = value)
 
 # guardar ----
-datos_sinim_4 |> arrow::write_parquet("datos/sinim_2022_2023.parquet")
+datos_sinim_4 |> arrow::write_parquet("datos/sinim_2019-2023.parquet")
+datos_sinim_4 |> readr::write_rds("datos/sinim_2019-2023.rds", compress = "gz")
+datos_sinim_4 |> writexl::write_xlsx("datos/sinim_2019-2023.xlsx")
